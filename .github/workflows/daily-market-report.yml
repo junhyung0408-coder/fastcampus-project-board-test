@@ -40,3 +40,33 @@ jobs:
             git commit -m "chore: update daily market report"
             git push
           fi
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-market-report
+          path: reports/latest.html
+
+      - name: Send report by email
+        if: ${{ secrets.SMTP_SERVER != '' && secrets.SMTP_PORT != '' && secrets.SMTP_USERNAME != '' && secrets.SMTP_PASSWORD != '' && secrets.MARKET_REPORT_TO != '' }}
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "[Daily Market] 전일 시장 요약 리포트"
+          to: ${{ secrets.MARKET_REPORT_TO }}
+          from: ${{ secrets.MARKET_REPORT_FROM || secrets.SMTP_USERNAME }}
+          secure: true
+          convert_markdown: false
+          html_body: |
+            <p>안녕하세요.</p>
+            <p>전일 시장 요약 리포트를 첨부합니다.</p>
+            <p>워크플로우 실행 결과: <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">바로가기</a></p>
+          attachments: reports/latest.html
+
+      - name: Warn when email secrets are missing
+        if: ${{ !(secrets.SMTP_SERVER != '' && secrets.SMTP_PORT != '' && secrets.SMTP_USERNAME != '' && secrets.SMTP_PASSWORD != '' && secrets.MARKET_REPORT_TO != '') }}
+        run: |
+          echo "Email step skipped. Configure SMTP_SERVER, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, MARKET_REPORT_TO secrets."
